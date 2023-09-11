@@ -84,7 +84,7 @@ class Events(commands.Cog):
         else:
             end_datetime = None
         user_id = str(ctx.user.id)
-        job_id = f"{user_id}_{ctx.interaction.id}"
+        job_id = f"{ctx.guild_id}_{user_id}_{ctx.interaction.id}"
         event_kwargs = {
             "guild_id": ctx.guild_id,
             "event_name": name,
@@ -106,6 +106,7 @@ class Events(commands.Cog):
                 id=job_id,
                 name=f"Create event '{name}'",
                 freq=freq,
+                guild_id=str(ctx.guild_id),
                 user_id=user_id,
                 username=ctx.author.name,
             )
@@ -136,7 +137,7 @@ class Events(commands.Cog):
                 and 400 == error.__cause__.status):
             await ctx.respond(error.__cause__.text, ephemeral=True)
         else:
-            logger.exception()
+            logger.exception("create_event_schedule_error:")
             await ctx.respond("Internal Error.", ephemeral=True)
 
     @d.slash_command(
@@ -147,9 +148,9 @@ class Events(commands.Cog):
     async def schedules(self, ctx: d.ApplicationContext) -> None:
         """Command for interacting with scheduled jobs."""
         if ctx.author.guild_permissions.administrator:
-            jobs = sch.get_all()
+            jobs = sch.get_all(str(ctx.guild_id))
         else:
-            jobs = sch.find(str(ctx.user.id))
+            jobs = sch.find(str(ctx.guild_id), str(ctx.user.id))
         if len(jobs) == 0:
             await ctx.respond("These are no scheduled jobs", ephemeral=True)
         else:

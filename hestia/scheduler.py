@@ -27,6 +27,7 @@ _scheduler = AsyncIOScheduler()
 _scheduler.start()
 TZ_ARGENTINA = zoneinfo.ZoneInfo("America/Buenos_Aires")
 _USER_JOBS = {}
+_GUILD_USERS_JOBS = {}
 
 
 class JobFrequency(enum.StrEnum):
@@ -56,12 +57,15 @@ class Job:
         id: uniquely identifies a job.
         name: frienldy name for the job.
         freq: the frequency of execution.
+        guild_id: id of the server of the job
         user_id: who requested the job.
+        username: name of the user that requested the job
         create_date: when was the job created.
     """
     id: str
     name: str
     freq: JobFrequency
+    guild_id: str
     user_id: str
     username: str
     create_date: dt.datetime = dt.datetime.now(TZ_ARGENTINA)
@@ -70,14 +74,17 @@ class Job:
         return f"Frequency: {self.freq.value} -- User: {self.username}"
 
 
-def get_all() -> t.List[Job]:
+def get_all(guild_id: str) -> t.List[Job]:
     """Return all the scheduled jobs."""
-    return list(chain.from_iterable(_USER_JOBS.values()))
+    users_jobs = _GUILD_USERS_JOBS.get(guild_id)
+    return (list(chain.from_iterable(users_jobs.values()))
+            if users_jobs is not None else [])
 
 
-def find(user_id: str) -> t.List[Job]:
+def find(guild_id: str, user_id: str) -> t.List[Job]:
     """Returns the jobs scheduled by an user."""
-    return _USER_JOBS.get(user_id)
+    users_jobs = _GUILD_USERS_JOBS.get(guild_id)
+    return users_jobs.get(user_id) if users_jobs is not None else []
 
 
 def create_oneoff(
@@ -120,12 +127,19 @@ def create_interval(
     _scheduler.add_job(func, "interval", kwargs=kwargs, id=job.id,
                        weeks=job.freq.weeks(), days=job.freq.days(),
                        start_date=start_date, next_run_time=next_run_time)
-    if _USER_JOBS.get(job.user_id) is None:
-        _USER_JOBS[job.user_id] = []
-    _USER_JOBS[job.user_id].append(job)
+    users_jobs = _GUILD_USERS_JOBS.get(job.guild_id)
+    if users_jobs is None:
+        users_jobs = {}
+        users_jobs[job.user_id] = []
+    elif users_jobs.get(job.user_id) is None:
+        users_jobs[job.user_id] = []
+    users_jobs[job.user_id].append(job)
+    _GUILD_USERS_JOBS[job.guild_id] = users_jobs
 
 
-def remove(id: str, user_id: str) -> None:
+def remove(id: str) -> None:
     """Removes the job from the apscheduler and from internal cache."""
     _scheduler.remove_job(id)
-    _USER_JOBS[user_id] = [j for j in _USER_JOBS[user_id] if j.id != id]
+    [guild_id, user_id] = id.split('_')[:2]
+    jobs = _GUILD_USERS_JOBS[guild_id][user_id]
+    _GUILD_USERS_JOBS[guild_id][user_id] = [j for j in jobs if j.id != id]

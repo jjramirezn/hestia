@@ -62,8 +62,7 @@ class JobListView(d.ui.View):
             """Un-schedules the selected job."""
             self.clear_items()
             selected_id = self._job_select.values[0]
-            user_id = selected_id.split('_')[0]
-            sch.remove(selected_id, user_id)
+            sch.remove(selected_id)
             await interaction.response.edit_message(content="Job removed",
                                                     view=self)
         btn = d.ui.Button(style=d.ButtonStyle.danger, label="Remove", row=0)
