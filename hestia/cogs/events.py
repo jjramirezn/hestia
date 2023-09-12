@@ -6,6 +6,7 @@ Commands:
 """
 import os
 import datetime as dt
+import textwrap
 
 import discord as d
 from discord.ext import commands
@@ -102,6 +103,8 @@ class Events(commands.Cog):
                 kwargs=event_kwargs,
             )
         elif (freq.is_interval):
+            loc_repr = (location if isinstance(location, str)
+                        else f"<#{location.id}>")
             job = sch.Job(
                 id=job_id,
                 name=f"Create event '{name}'",
@@ -109,6 +112,15 @@ class Events(commands.Cog):
                 guild_id=str(ctx.guild_id),
                 user_id=user_id,
                 username=ctx.author.name,
+                message=textwrap.dedent(
+                    f"""\
+                    - Name: {name}
+                    - Hour: {start_datetime.time().isoformat('minutes')}
+                    - Location: {loc_repr}
+                    - Frequency: {freq}
+                    - Event will be created {hours_before} hours before
+                    - Creator: <@{user_id}>
+                    """)
             )
             start_date = start_datetime - dt.timedelta(hours=hours_before)
             event_kwargs["first_start"] = start_datetime

@@ -3,6 +3,7 @@
 Views:
     JobListView: for interacting with the enabled jobs.
 """
+import textwrap
 import typing as t
 
 import discord as d
@@ -46,9 +47,14 @@ class JobListView(d.ui.View):
             self.remove_item(self._job_select)
             self.add_item(self._create_remove())
             self.add_item(self._create_cancel())
+            job = sch.get(self._job_select.values[0])
             await interaction.response.edit_message(
-                content="Do you want to remove the selected schedule?",
-                view=self
+                content=textwrap.dedent(
+                    f"""\
+                    Create event
+                    {job.message}\n\nDo you want to remove this schedule?
+                    """),
+                view=self,
             )
         select = d.ui.Select(placeholder="Select a schedule job",
                              row=0,
@@ -74,8 +80,9 @@ class JobListView(d.ui.View):
         async def callback(interaction: d.Interaction):
             """Clears the buttons and the selection."""
             self.clear_items()
+            self.add_item(self._job_select)
             await interaction.response.edit_message(
-                content='No job was removed',
+                content="No job was removed",
                 view=self,
             )
         btn = d.ui.Button(style=d.ButtonStyle.grey, label='Cancel', row=0)

@@ -60,6 +60,7 @@ class Job:
         guild_id: id of the server of the job
         user_id: who requested the job.
         username: name of the user that requested the job
+        message: to print when seeing the job as an unit
         create_date: when was the job created.
     """
     id: str
@@ -68,6 +69,7 @@ class Job:
     guild_id: str
     user_id: str
     username: str
+    message: str
     create_date: dt.datetime = dt.datetime.now(TZ_ARGENTINA)
 
     def description(self) -> str:
@@ -81,10 +83,22 @@ def get_all(guild_id: str) -> t.List[Job]:
             if users_jobs is not None else [])
 
 
+def get(id: str) -> Job:
+    """Return a Job if it exists"""
+    [guild_id, user_id] = id.split('_')[:2]
+    jobs = find(guild_id, user_id)
+    if 0 < len(jobs):
+        try:
+            return next(j for j in jobs if id == j.id)
+        except StopIteration:
+            pass
+    return None
+
+
 def find(guild_id: str, user_id: str) -> t.List[Job]:
     """Returns the jobs scheduled by an user."""
     users_jobs = _GUILD_USERS_JOBS.get(guild_id)
-    return users_jobs.get(user_id) if users_jobs is not None else []
+    return users_jobs.get(user_id) or [] if users_jobs is not None else []
 
 
 def create_oneoff(
@@ -141,5 +155,5 @@ def remove(id: str) -> None:
     """Removes the job from the apscheduler and from internal cache."""
     _scheduler.remove_job(id)
     [guild_id, user_id] = id.split('_')[:2]
-    jobs = _GUILD_USERS_JOBS[guild_id][user_id]
+    jobs = find(guild_id, user_id)
     _GUILD_USERS_JOBS[guild_id][user_id] = [j for j in jobs if j.id != id]
